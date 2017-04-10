@@ -41,7 +41,7 @@ except:
 class Movie():
 	def __init__(self, movie_dict):
         self.movie_dict = movie_dict   #confused about this part
-        self.movie_tittle = movie.title
+        self.movie_title = movie.title
         self.movie_director = movie_director
         self.movie_IMBD = movie_IMBD
 
@@ -49,11 +49,43 @@ class Movie():
     def __str__(self):
         return "{} is directed by {} and received a an IMBD rating of {}".format(self.movie.title, self.movie_director, self.movie_IMBD)
 
-    def get_movie_actors(self):
+	def get_movie_actors(self):
+		base_url = 'http://www.omdbapi.com/'
+		full_url = requestURL(base_url, params = {"t": self.movie_title})
+
+		if self.movie_title in CACHE_FNAME:
+			omdb_response_text = CACHE_DICTION[full_url]
+		else:
+			omdb_response = requests.get(full_url)
+			CACHE_DICTION[full_url] = omdb_response.text
+			omdb_response_text = omdb_response.text
+
+			cache_file = open(CACHE_FNAME, 'w')
+			cache_file.write(json.dumps(CACHE_DICTION))
+			cache_file.close
+		return json.loads(omdb_response_text) #DOES THIS RETURN A DICTIOANRY?? IT SHOULD! Also, need to just grab the INFO aobut actors,not the entire movie!
+		
 
 
 
+		##########THIS EXAMPLE WORKS, DOES IT WORK FOR THIS METHOD AS WELL######
+		# if full_url in omdb_cache_diction:
+		# 	omdb_response_text = omdb_cache_diction[full_url]
+		# else:
+		# 	omdb_response = requests.get(full_url)
+		# 	omdb_cache_diction[full_url] = omdb_response.text
+		# 	omdb_response_text = omdb_response.text
 
+		# 	cache_file = open(omdb_cached_data, 'w')
+		# 	cache_file.write(json.dumps(omdb_cache_diction))
+		# 	cache_file.close
+		# return json.loads(omdb_response_text)
+
+
+def requestURL(base_url, params = {}):
+	r = requests.Request(method = 'GET', url = base_url, params = params)
+	prep = r.prepare()
+	return prep.url
 
 
 
