@@ -10,13 +10,46 @@ import re
 import json
 import sqlite3
 
+#### TWEEPY SETUP CODE:
+# Authentication information should be in a twitter_info file...
+consumer_key = twitter_info.consumer_key
+consumer_secret = twitter_info.consumer_secret
+access_token = twitter_info.access_token
+access_token_secret = twitter_info.access_token_secret
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+
+# Set up library to grab stuff from twitter with your authentication, and return it in a JSON format 
+api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
+
+##### END TWEEPY SETUP CODE
+
+#CACHING SYSTEM
+
+CACHE_FNAME = "I206_FinalProject_cache.json"
+# Put the rest of your caching setup here:
+try: 
+	cache_file = open(CACHE_FNAME, 'r')
+	cache_contents = cache_file.read()
+	cache_file.close()
+	CACHE_DICTION = json.loads(cache_contents)
+except:
+	CACHE_DICTION = {}
 
 
+#CREATE MOVIE CLASS
+class Movie():
+	def __init__(self, movie_dict):
+        self.movie_dict = movie_dict   #confused about this part
+        self.movie_tittle = movie.title
+        self.movie_director = movie_director
+        self.movie_IMBD = movie_IMBD
 
 
+    def __str__(self):
+        return "{} is directed by {} and received a an IMBD rating of {}".format(self.movie.title, self.movie_director, self.movie_IMBD)
 
-
-
+    def get_movie_actors(self):
 
 
 
