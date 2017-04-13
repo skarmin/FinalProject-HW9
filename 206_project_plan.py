@@ -42,7 +42,7 @@ class Movie():
 	def __init__(self, movie_title):
 		self.movie_title = movie_title
         # self.movie_director = movie_director
-        # self.movie_IMBD = movie_IMBD
+        # self.movie_IMBD_rating = movie_IMBD_rating
 
 	def __str__(self):
 		return "{} is directed by {} and received a an IMBD rating of {}".format(self.movie.title, self.movie_director, self.movie_IMBD)
@@ -61,23 +61,42 @@ class Movie():
 			cache_file.close
 		movie_dict = json.loads(omdb_response_text)
 		
-		actors = movie_dict['Actors']
+		actors = movie_dict['Actors'][:4]
 		director = movie_dict['Director']
 		rating = movie_dict['Ratings'][0]['Value']
+		# print("hi")
+		# print(actors)
+		# print (len(actors))
+		# print(director)
+		# print (len(director))
+		# print(len(rating))
+		# print(rating)
 		return actors, director, rating
 	
-	def get_twitter_info(self, actors):
+	def get_twitter_info(self, actors):				#Need to Fix CACHE System	
 		actor_tweets = {}
-		for actor in actors:
-			tweets = api.search(actor)
-			actor_tweets[actor] = tweets
 
-		return actor_tweets
+		if actor_tweets in CACHE_FNAME:
+			print("Using Cached Data...")
+			tweets = CACHE_DICTION[actor]
+			return tweets
+		else:
+			print("Finding Data online...")
+
+			for actor in actors.split(","):
+				actor = actor.replace(" ", '')
+				#print(actor)
+				tweets = api.search(q=str(actor))
+				actor_tweets[actor] = tweets
+			return actor_tweets
 
 
 
 Miracle = Movie("Miracle On Ice")
 movie_info = Miracle.get_movie_info()
+# print(movie_info)
+
+
 print (Miracle.get_twitter_info(movie_info[0]))
 
 
