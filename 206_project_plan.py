@@ -26,83 +26,124 @@ api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
 
 #CACHING SYSTEM
 
-CACHE_FNAME = "206_FinalProject_cache.json"
+CACHE_FNAME = "206_FinalProject_cache.json" #CACHE SYSTYEM
 # Put the rest of your caching setup here:
 try: 
 	cache_file = open(CACHE_FNAME, 'r')
 	cache_contents = cache_file.read()
-	cache_file.close()
 	CACHE_DICTION = json.loads(cache_contents)
+	cache_file.close()
+
 except:
 	CACHE_DICTION = {}
 
+def requestURL(base_url, params = {}):    #PREP FOR REQUESTING DATA
+	response = requests.Request(method = 'GET', url = base_url, params = params)
+	prep = response.prepare()
+	return prep.url
+
+#GET MOVIE DATA
+def get_movie_info(movie_title): #GET MOVIE DATA
+	movie_dict = {}
+	base_url = 'http://www.omdbapi.com/'
+	full_url = requestURL(base_url, params = {"t": movie_title})
+	
+	if movie_title in CACHE_DICTION:
+		print("Getting data from Cache...")
+		omdb_response_text = CACHE_DICTION[movie_title]
+	else:
+		print("Getting data from internet...")
+
+		omdb_response = requests.get(full_url)  #GETS DATA IN VARIABLE omdb resposne
+		CACHE_DICTION[movie_title] = omdb_response.text #puts data into dictionary wiht url as key
+		omdb_response_text = omdb_response.text
+		cache_file = open(CACHE_FNAME, 'w')
+		cache_file.write(json.dumps(CACHE_DICTION))
+		cache_file.close
+	movie_dict = json.loads(omdb_response_text)
+	#print("test")
+	return movie_dict
 
 #CREATE MOVIE CLASS
 class Movie():
-	def __init__(self, movie_title):
-		self.movie_title = movie_title
-        # self.movie_director = movie_director
-        # self.movie_IMBD_rating = movie_IMBD_rating
+	def __init__(self, movie_dict):
+		self.movie_title = movie_dict["Title"]
+		self.movie_director = movie_dict["Director"]
+		self.movie_IMBD_rating = movie_dict["Ratings"][0]["Value"]
+		self.movie_release_date = movie_dict["Released"]
+		self.movie_plot = movie_dict["Plot"]
 
 	def __str__(self):
 		return "{} is directed by {} and received a an IMBD rating of {}".format(self.movie.title, self.movie_director, self.movie_IMBD)
 
-	def get_movie_info(self):
-		base_url = 'http://www.omdbapi.com/'
-		full_url = requests.get(base_url, params = {"t": self.movie_title}).text
 
-		if self.movie_title in CACHE_FNAME:
-			omdb_response_text = CACHE_DICTION[self.movie_title] #Why response_text vs just response
-		else:
-			CACHE_DICTION[self.movie_title] = full_url
-			omdb_response_text = full_url
-			cache_file = open(CACHE_FNAME, 'w')
-			cache_file.write(json.dumps(CACHE_DICTION))
-			cache_file.close
-		movie_dict = json.loads(omdb_response_text)
-		
-		actors = movie_dict['Actors'][:4]
-		director = movie_dict['Director']
-		rating = movie_dict['Ratings'][0]['Value']
-		# print("hi")
-		# print(actors)
-		# print (len(actors))
-		# print(director)
-		# print (len(director))
-		# print(len(rating))
-		# print(rating)
-		return actors, director, rating
+	def get_actors(movie_dict):
+		actors = movie_dict["Actors"]
+		print("test")
+		return actors
 	
-	def get_twitter_info(self, actors):				#Need to Fix CACHE System	
+	def get_twitter_info(actors):				#Need to Fix CACHE System
 		actor_tweets = {}
+		# for actor in actors.split(", "):
+		# 	print(actor)
+		# 	tweets = api.search(q=str(actor))
+		# 	actor_tweets[actor] = tweets
+		# return actor_tweets
 
-		if actor_tweets in CACHE_FNAME:
-			print("Using Cached Data...")
-			tweets = CACHE_DICTION[actor]
-			return tweets
-		else:
-			print("Finding Data online...")
-
-			for actor in actors.split(","):
-				actor = actor.replace(" ", '')
+		for actor in actors.split(","):
+			if actor in CACHE_DICTION:
+				print("Using Cached Data...")
+				tweets = CACHE_DICTION[actor]
+				return tweets
+			else:
+				print("Finding Data online...")
+				#for actor in actors.split(","):
+				#actor = actor.replace(" ", '')
 				#print(actor)
 				tweets = api.search(q=str(actor))
-				actor_tweets[actor] = tweets
-			return actor_tweets
+				CACHE_DICTION[actor] = tweets
+				print(tweets)
+				f = open(CACHE_FNAME, 'w')
+				f.write(json.dumps(CACHE_DICTION))
+				f.close()
+			return tweets
+
+
+# CACHE_DICTION[unique_identifier] = twitter_results
+# 		f = open(CACHE_FNAME, 'w')
+# 		f.write(json.dumps(CACHE_DICTION))
+# 		f.close()
+# 	tweets = twitter_results['statuses']
+# 	return tweets
 
 
 
-Miracle = Movie("Miracle On Ice")
-movie_info = Miracle.get_movie_info()
-# print(movie_info)
+data = get_movie_info("Pulp Fiction")
+actors = Movie.get_actors(data)
+twitter = Movie.get_twitter_info(actors)
+print (twitter)
 
 
-print (Miracle.get_twitter_info(movie_info[0]))
+#2 of 2 Examples of tables to show proficiency 
+conn = sqlite3.connect('FinalProjectData.db')
+cur = conn.cursor()
 
+cur.execute('DROP TABLE IF EXISTS FinalProjectData')
+#TweetTable
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Tweets (tweet_id TEXT PRIMARY KEY, '
+table_spec += 'text TEXT, user_id TEXT, retweets INTEGER)'
+cur.execute(table_spec)
 
-#GET TWitter info
+#MovieTable
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'Movies (movie_id TEXT PRIMARY KEY, '
+table_spec += 'title TEXT, director TEXT, rating INTEGER, num_languages INTEGER, box_office_num TEXT, main_actor TEXT)'
+cur.execute(table_spec)
 
-
+#To input data
+statement = 'INSERT OR IGNORE INTO Movies VALUES (?, ?, ?, ?, ?, ?)'
+statement1 = 'INSERT OR IGNORE INTO Tweets VALUES (?, ?, ?, ?)'
 
 
 # Write your test cases here.
