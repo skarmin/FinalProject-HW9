@@ -25,7 +25,6 @@ api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
 ##### END TWEEPY SETUP CODE
 
 #CACHING SYSTEM
-
 CACHE_FNAME = "206_FinalProject_cache.json" #CACHE SYSTYEM
 # Put the rest of your caching setup here:
 try: 
@@ -37,23 +36,21 @@ try:
 except:
 	CACHE_DICTION = {}
 
+
+#GET MOVIE DATA
 def requestURL(base_url, params = {}):    #PREP FOR REQUESTING DATA
 	response = requests.Request(method = 'GET', url = base_url, params = params)
 	prep = response.prepare()
 	return prep.url
-
-#GET MOVIE DATA
 def get_movie_info(movie_title): #GET MOVIE DATA
 	movie_dict = {}
 	base_url = 'http://www.omdbapi.com/'
 	full_url = requestURL(base_url, params = {"t": movie_title})
-	
 	if movie_title in CACHE_DICTION:
 		print("Getting data from Cache...")
 		omdb_response_text = CACHE_DICTION[movie_title]
 	else:
 		print("Getting data from internet...")
-
 		omdb_response = requests.get(full_url)  #GETS DATA IN VARIABLE omdb resposne
 		CACHE_DICTION[movie_title] = omdb_response.text #puts data into dictionary wiht url as key
 		omdb_response_text = omdb_response.text
@@ -61,74 +58,78 @@ def get_movie_info(movie_title): #GET MOVIE DATA
 		cache_file.write(json.dumps(CACHE_DICTION))
 		cache_file.close
 	movie_dict = json.loads(omdb_response_text)
-	#print("test")
+	# print (movie_dict)
+	# print (type(movie_dict))
 	return movie_dict
-
 #CREATE MOVIE CLASS
 class Movie():
-	def __init__(self, movie_dict):
+	def __init__(self, tweet, movie_dict):
 		self.movie_title = movie_dict["Title"]
 		self.movie_director = movie_dict["Director"]
 		self.movie_IMBD_rating = movie_dict["Ratings"][0]["Value"]
 		self.movie_release_date = movie_dict["Released"]
 		self.movie_plot = movie_dict["Plot"]
-
 	def __str__(self):
 		return "{} is directed by {} and received a an IMBD rating of {}".format(self.movie.title, self.movie_director, self.movie_IMBD)
 
-
 	def get_actors(movie_dict):
 		actors = movie_dict["Actors"]
-		print("test")
 		return actors
 	
-	def get_twitter_info(actors):				#Need to Fix CACHE System
-		actor_tweets = {}
-		# for actor in actors.split(", "):
-		# 	print(actor)
-		# 	tweets = api.search(q=str(actor))
-		# 	actor_tweets[actor] = tweets
-		# return actor_tweets
-
-		for actor in actors.split(","):
+	def get_twitter_info(actors):				
+		actors = actors.split(", ")
+		for actor in actors:
 			if actor in CACHE_DICTION:
 				print("Using Cached Data...")
 				tweets = CACHE_DICTION[actor]
-				return tweets
+				# print(actor)
+				# print(tweets)
 			else:
 				print("Finding Data online...")
-				#for actor in actors.split(","):
-				#actor = actor.replace(" ", '')
-				#print(actor)
 				tweets = api.search(q=str(actor))
 				CACHE_DICTION[actor] = tweets
-				print(tweets)
+				
 				f = open(CACHE_FNAME, 'w')
 				f.write(json.dumps(CACHE_DICTION))
 				f.close()
-			return tweets
+		tweets = tweets['statuses']
+		return tweets
 
+	def get_movie_table(movie_dict):
+		actors = movie_dict["Actors"]
+		actors = actors.split(",")
+		MovieInfoTuple = (movie_dict['imdbID'], movie_dict['Title'], movie_dict["Director"], movie_dict["imdbRating"], len(movie_dict["Language"].split()), movie_dict["BoxOffice"], actors[0])	
+		return MovieInfoTuple
+	
+	def get_user_table(tweets, movie_dict):
+		user_lst = []
+		for tweet in twitter:
+			t2 = (tweet['user']['id_str'], tweet['user']['screen_name'], tweet['user']['favourites_count'])
+			user_lst.append(t2)
+		return user_lst 		
 
-# CACHE_DICTION[unique_identifier] = twitter_results
-# 		f = open(CACHE_FNAME, 'w')
-# 		f.write(json.dumps(CACHE_DICTION))
-# 		f.close()
-# 	tweets = twitter_results['statuses']
-# 	return tweets
+#CALLING!!!!!!!
+movie_list = ["Frozen", "Born in China", "Pulp Fiction"] #WHEN ADD USER INPUT, ADD TRY AND EXCEPT IN CASE MOVIE ISN'T FOUND
+tuple_movie_lst = []
+tweet_list = []
+users = []
+for movie in movie_list:
+	movie_dict = get_movie_info(movie)
+	ActorsOfMovie = Movie.get_actors(movie_dict)
+	twitter = Movie.get_twitter_info(ActorsOfMovie)
+	#Twitter = a list of dictionareis, each dictionary consisting of one tweet info
+	movie_table = Movie.get_movie_table(movie_dict)
+	user_table = Movie.get_user_table(twitter, movie_dict)
+	
+	tuple_movie_lst.append(movie_table)
+	tweet_list.append(twitter)
+	users.append(user_table)
 
-
-
-data = get_movie_info("Pulp Fiction")
-actors = Movie.get_actors(data)
-twitter = Movie.get_twitter_info(actors)
-print (twitter)
-
-
-#2 of 2 Examples of tables to show proficiency 
-conn = sqlite3.connect('FinalProjectData.db')
+#CREATE TABLE FILE
+conn = sqlite3.connect('FinalProjectDataTEST.db', timeout=3)
 cur = conn.cursor()
-
 cur.execute('DROP TABLE IF EXISTS FinalProjectData')
+
 #TweetTable
 table_spec = 'CREATE TABLE IF NOT EXISTS '
 table_spec += 'Tweets (tweet_id TEXT PRIMARY KEY, '
@@ -141,12 +142,41 @@ table_spec += 'Movies (movie_id TEXT PRIMARY KEY, '
 table_spec += 'title TEXT, director TEXT, rating INTEGER, num_languages INTEGER, box_office_num TEXT, main_actor TEXT)'
 cur.execute(table_spec)
 
+#UserTable
+table_spec = 'CREATE TABLE IF NOT EXISTS '
+table_spec += 'User (user_id TEXT PRIMARY KEY, '
+table_spec += 'screen_name TEXT, user_favorites INTEGER)'
+cur.execute(table_spec)
+
 #To input data
-statement = 'INSERT OR IGNORE INTO Movies VALUES (?, ?, ?, ?, ?, ?)'
+statement = 'INSERT OR IGNORE INTO Movies VALUES (?, ?, ?, ?, ?, ?, ?)'
 statement1 = 'INSERT OR IGNORE INTO Tweets VALUES (?, ?, ?, ?)'
+statement2 = 'INSERT OR IGNORE INTO User VALUES (?, ?, ?)'
 
 
-# Write your test cases here.
+for movie in tuple_movie_lst: #Movie
+	# print(movie)
+	cur.execute(statement, movie)
+
+for tweet in tweet_list: #TWITTER
+	for x in tweet:
+		t = (x['user']['id_str'], x['text'],x['user']['id_str'],x['retweet_count'])
+		cur.execute(statement1,t)
+
+for user in users: #User
+	for x in user:
+		cur.execute(statement2, x)
+
+#ISSUE COULD BE THAT I'M ITTERATING THROUGH WRONG LIST
+
+#Commits all above statments to Tables
+conn.commit()
+
+
+
+
+conn.close()
+#Write your test cases hereself.                                            FIX TEST CASES
 # class CacheTesting(unittest.TestCase):
 # 	def test_movie_cache(self):
 # 		cache_file = open("SI206_FinalProject_cache.json","r").read()
@@ -160,24 +190,24 @@ statement1 = 'INSERT OR IGNORE INTO Tweets VALUES (?, ?, ?, ?)'
 # 		self.assertEqual(type(movie_instance.__str__(), str))
 # 	def test_get_actors_method(self):
 # 		movie_instance = Movie(movie_instance)
-# 		self.assertEqual(type(movie_instance.get_movie_actors()), list))
+# 		self.assertEqual(type(movie_instance.get_movie_actors()), list)
 # 	def test_get_actors_method2(self):
 # 		movie_instance = Movie(movie_instance)
 # 		actors = movie_instance.get_movie_actors()[0]
-# 		self.assertEqual(type(actors), list))
+# 		self.assertEqual(type(actors), list)
 # 	def test_title_of_movie(self):
 # 		movie_instance = Movie(movie_instance)
 # 		self.assertEqual(type(movie_instance.tittle), str)
 # 	def test_movie_tweets(self):
 #  		self.assertEqual(type(movie_tweets),type([]))
-#  	def test_actor(self):
+# 	def test_actor(self):
 #  		self.assertEqual(type(get_movie_actors[18]),type({"hi":3}))
 
 
 
 
-## Remember to invoke all your tests...
-# if __name__ == "__main__":
-# 	unittest.main(verbosity=2)
+# Remember to invoke all your tests...
+if __name__ == "__main__":
+	unittest.main(verbosity=2)
 
 
