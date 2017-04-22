@@ -109,7 +109,7 @@ class Movie():
 		return user_lst 		
 
 #CALLING!!!!!!!
-movie_list = ["Frozen", "Born in China", "Pulp Fiction"] #WHEN ADD USER INPUT, ADD TRY AND EXCEPT IN CASE MOVIE ISN'T FOUND
+movie_list = ["Frozen", "The Wolf of Wall Street", "Friends With Benefits"] #WHEN ADD USER INPUT, ADD TRY AND EXCEPT IN CASE MOVIE ISN'T FOUND
 tuple_movie_lst = []
 tweet_list = []
 users = []
@@ -126,7 +126,7 @@ for movie in movie_list:
 	users.append(user_table)
 
 #CREATE TABLE FILE
-conn = sqlite3.connect('FinalProjectDataTEST.db', timeout=3)
+conn = sqlite3.connect('FinalProjectData.db', timeout=3)
 cur = conn.cursor()
 cur.execute('DROP TABLE IF EXISTS FinalProjectData')
 
@@ -159,7 +159,9 @@ for movie in tuple_movie_lst: #Movie
 	cur.execute(statement, movie)
 
 for tweet in tweet_list: #TWITTER
+	print(tweet[0])
 	for x in tweet:
+		# print(x)
 		t = (x['user']['id_str'], x['text'],x['user']['id_str'],x['retweet_count'])
 		cur.execute(statement1,t)
 
@@ -167,14 +169,36 @@ for user in users: #User
 	for x in user:
 		cur.execute(statement2, x)
 
-#ISSUE COULD BE THAT I'M ITTERATING THROUGH WRONG LIST
-
-#Commits all above statments to Tables
 conn.commit()
+#QUERY SECTION
+
+#Get most popular tweets about a given actor by getting tweets with over 30 Retweets. Store in variable: pop_tweets
+	#POSSIBLY ADD IN THE ACTORS NAME!!
+statement = 'SELECT * FROM Tweets WHERE retweets > 30'
+result = cur.execute(statement)
+pop_tweets = []
+for x in result.fetchall():
+	pop_tweets.append(x)
+# print(pop_tweets)
+
+#Get most popualr tweeter (Join Query) by getting tweets with more than 25 retweets and favorites. Store in variable: pop_twitter_user
+statement = 'SELECT screen_name, user_favorites FROM User INNER JOIN Tweets ON Tweets.tweet_id=User.user_id WHERE Tweets.retweets >20 and User.user_favorites >20'
+result = cur.execute(statement)
+pop_twitter_user = []
+for x in result.fetchall():
+	pop_twitter_user.append(x)
+print(pop_tweets)
 
 
+#Get info about movie outcome to declare the most succesful film. Store in variable: most_succesful_movie
+statement = 'SELECT title, rating, box_office_num FROM Movies'
+result = cur.execute(statement)
+most_succesful_movies = []
+for x in result.fetchall():
+	most_succesful_movies.append(x)
+print(most_succesful_movies)
 
-
+#Closed Database
 conn.close()
 #Write your test cases hereself.                                            FIX TEST CASES
 # class CacheTesting(unittest.TestCase):
